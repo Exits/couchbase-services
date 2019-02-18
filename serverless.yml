@@ -1,0 +1,38 @@
+service: gwiz-couchbase-service
+
+provider:
+  name: aws  
+  runtime: nodejs8.10
+  role: arn:aws:iam::248113531029:role/couchbase-service-dev-us-east-1-lambdaRole
+  vpc:
+    securityGroupIds:
+      - sg-05951416c94387778
+    subnetIds:
+      - subnet-0633a833802479888
+      - subnet-09423b373c00efbee
+      
+functions:
+  create:
+    handler: handler.create
+    events:
+      - http:
+          path: create
+          method: post
+  retrieve:
+    handler: handler.retrieve
+    events:
+      - http:
+          path: retrieve
+          method: get
+  update:
+    handler: handler.update
+    events:
+      - http:
+          path: update/{id}
+          method: put
+  delete:
+    handler: handler.delete
+    events:
+      - http:
+          path: delete
+          method: delete
