@@ -9,15 +9,16 @@
  * build a validation service
  */
 
-const Couchbase = require("couchbase"),
-  UUID = require("uuid"),
-  Joi = require("joi");
+const Couchbase = require('couchbase'),
+  util = require('util'),
+  UUID = require('uuid'),
+  Joi = require('joi');
 
-var cluster = new Couchbase.Cluster("couchbase://ip address to any cb");
-cluster.authenticate("username here", "password here");
-var bucket = cluster.openBucket("dp");
+var cluster = new Couchbase.Cluster('couchbase://{ip}');
+cluster.authenticate('{un}', '{pw}');
+var bucket = cluster.openBucket('dp');
 
-bucket.on("error", error => {
+bucket.on('error', error => {
   console.dir(error);
 });
 /*
@@ -31,9 +32,41 @@ module.exports.create = (event, context, callback) => {
   // change how the function waits to respond.
   context.callbackWaitsForEmptyEventLoop = false;
   var schema = Joi.object().keys({
-    firstname: Joi.string().required(),
-    lastname: Joi.string().required(),
-    type: Joi.string().forbidden().default("person")
+    lineNo: Joi.number().integer().required(),
+    entity_Id: Joi.number().integer().required(),
+    name: Joi.string().allow(''),
+    address_1: Joi.string().allow(''),
+    address_2: Joi.string().allow(''),
+    city: Joi.string().allow(''),
+    state: Joi.string().allow(''),
+    start_Date: Joi.date().iso().allow(null),
+    end_Date: Joi.date().iso().allow(null),
+    denial_Code: Joi.string().allow(''),
+    last_Update: Joi.date().iso().allow(null),
+    first_vol: Joi.number().integer().allow(null),
+    first_page: Joi.number().integer().allow(null),
+    first_date: Joi.date().iso().allow(null),
+    second_vol: Joi.number().integer().allow(null),
+    second_page: Joi.number().integer().allow(null),
+    second_date: Joi.date().iso().allow(null),
+    third_vol: Joi.number().integer().allow(null),
+    third_page: Joi.number().integer().allow(null),
+    third_date: Joi.date().iso().allow(null),
+    fourth_vol: Joi.number().integer().allow(null),
+    fourth_page: Joi.number().integer().allow(null),
+    fourth_date: Joi.date().iso().allow(null),
+    fifth_vol: Joi.number().integer().allow(null),
+    fifth_page: Joi.number().integer().allow(null),
+    fifth_date: Joi.date().iso().allow(null),
+    sixth_vol: Joi.number().integer().allow(null),
+    sixth_page: Joi.number().integer().allow(null),
+    sixth_date: Joi.date().iso().allow(null),
+    seventh_vol: Joi.number().integer().allow(null),
+    seventh_page: Joi.number().integer().allow(null),
+    seventh_date: Joi.date().iso().allow(null),
+    eighth_vol: Joi.number().integer().allow(null),
+    eighth_page: Joi.number().integer().allow(null),
+    eighth_date: Joi.date().iso().allow(null)
   });
   var data = JSON.parse(event.body);
   var response = {};
@@ -45,12 +78,24 @@ module.exports.create = (event, context, callback) => {
   if (validation.error) {
     // format the error response to make lambda happy (statusCode and body required)
     response = {
-      statusCode: 500,
+      statusCode: 400,
       body: JSON.stringify(validation.error.details)
     };
     return callback(null, response);
   }
-  var id = UUID.v4();
+  if(!(data.lineNo || data.entity_Id))
+  {
+   // format the error response to make lambda happy (statusCode and body required)
+    response = {
+      statusCode: 400,
+      body: JSON.stringify({
+        code: error.code,
+        message: 'lineNo and entity_Id must have a value'
+      })  
+    };
+    return callback(null, response); 
+  }
+  var id = util.format('ern:dp:mk:import:line:%i:entity_id:%i', data.lineNo, data.entity_Id);
   bucket.insert(id, validation.value, (error, result) => {
     if (error) {
       response = {
@@ -62,7 +107,7 @@ module.exports.create = (event, context, callback) => {
       };
       return callback(null, response);
     }
-    data.id = id;
+    data.ern = id;
     response = {
       statusCode: 201,
       body: JSON.stringify(data)
@@ -77,7 +122,8 @@ module.exports.retrieve = (event, context, callback) => {
   // change how the function waits to respond.
   context.callbackWaitsForEmptyEventLoop = false;
   var response = {};
-  var statement = "SELECT META().id, `" + bucket._name + "`.* FROM `" + bucket._name + "` WHERE type = 'person'";
+  // var statement = "SELECT META().id, `" + bucket._name + "`.* FROM `" + bucket._name + "` WHERE type = 'person'";
+  var statement = util.format("SELECT META().id, %s.* FROM %s", bucket._name, bucket._name);
   var query = Couchbase.N1qlQuery.fromString(statement);
   bucket.query(query, (error, result) => {
     if (error) {
@@ -124,10 +170,10 @@ module.exports.update = (event, context, callback) => {
   // in this case, read the id from the path parameters (uri/url)
   var builder = bucket.mutateIn(event.pathParameters.id);
   if (data.firstname) {
-    builder.replace("firstname", data.firstname);
+    builder.replace('firstname', data.firstname);
   }
   if (data.lastname) {
-    builder.replace("lastname", data.lastname);
+    builder.replace('lastname', data.lastname);
   }
   builder.execute((error, result) => {
     if (error) {

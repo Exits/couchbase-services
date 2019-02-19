@@ -5,3 +5,6 @@ jspm_packages
 # Serverless directories
 .serverless
 /aws-lambda-admin.csv
+
+instructions.md
+/.idea/
