@@ -14,24 +14,15 @@ const Couchbase = require('couchbase'),
   UUID = require('uuid'),
   Joi = require('joi');
 
-var cluster = new Couchbase.Cluster('couchbase://{ip}');
-cluster.authenticate('{un}', '{pw}');
+var cluster = new Couchbase.Cluster('couchbase://100.24.37.195');
+cluster.authenticate('the_gauth', '4y8xs#7Cnk');
 var bucket = cluster.openBucket('dp');
 
 bucket.on('error', error => {
   console.dir(error);
 });
-/*
-{
-  "firstname": "Benjamin",
-  "lastname": "Samples",
-  "type": "person"
-}
-*/
-module.exports.create = (event, context, callback) => {
-  // change how the function waits to respond.
-  context.callbackWaitsForEmptyEventLoop = false;
-  var schema = Joi.object().keys({
+
+const mk_parsed = Joi.object().keys({
     lineNo: Joi.number().integer().required(),
     entity_Id: Joi.number().integer().required(),
     name: Joi.string().allow(''),
@@ -67,12 +58,20 @@ module.exports.create = (event, context, callback) => {
     eighth_vol: Joi.number().integer().allow(null),
     eighth_page: Joi.number().integer().allow(null),
     eighth_date: Joi.date().iso().allow(null)
+  }),// first phase parse
+  mk_raw = Joi.object().keys({
+    lineNo: Joi.number().integer().required(),
+    entity_Id: Joi.number().integer().required(),
+    raw: Joi.string(),
   });
+
+module.exports.create = (event, context, callback) => {
+  // change how the function waits to respond.
+  context.callbackWaitsForEmptyEventLoop = false;
   var data = JSON.parse(event.body);
   var response = {};
 
-
-  var validation = Joi.validate(data, schema);
+  var validation = Joi.validate(data, mk_raw);
 
   // if the model submitted is invalid, smack 'em upside they head
   if (validation.error) {
@@ -83,17 +82,16 @@ module.exports.create = (event, context, callback) => {
     };
     return callback(null, response);
   }
-  if(!(data.lineNo || data.entity_Id))
-  {
-   // format the error response to make lambda happy (statusCode and body required)
+  if (!(data.lineNo || data.entity_Id)) {
+    // format the error response to make lambda happy (statusCode and body required)
     response = {
       statusCode: 400,
       body: JSON.stringify({
         code: error.code,
         message: 'lineNo and entity_Id must have a value'
-      })  
+      })
     };
-    return callback(null, response); 
+    return callback(null, response);
   }
   var id = util.format('ern:dp:mk:import:line:%i:entity_id:%i', data.lineNo, data.entity_Id);
   bucket.insert(id, validation.value, (error, result) => {
