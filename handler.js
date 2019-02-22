@@ -71,17 +71,17 @@ module.exports.create = (event, context, callback) => {
   var data = JSON.parse(event.body);
   var response = {};
 
-  var validation = Joi.validate(data, mk_raw);
+  // var validation = Joi.validate(data, mk_raw);
 
-  // if the model submitted is invalid, smack 'em upside they head
-  if (validation.error) {
-    // format the error response to make lambda happy (statusCode and body required)
-    response = {
-      statusCode: 400,
-      body: JSON.stringify(validation.error.details)
-    };
-    return callback(null, response);
-  }
+  // // if the model submitted is invalid, smack 'em upside they head
+  // if (validation.error) {
+  //   // format the error response to make lambda happy (statusCode and body required)
+  //   response = {
+  //     statusCode: 400,
+  //     body: JSON.stringify(validation.error.details)
+  //   };
+  //   return callback(null, response);
+  // }
   if (!(data.lineNo || data.entity_Id)) {
     // format the error response to make lambda happy (statusCode and body required)
     response = {
@@ -93,8 +93,8 @@ module.exports.create = (event, context, callback) => {
     };
     return callback(null, response);
   }
-  var id = util.format('ern:dp:mk:import:line:%i:entity_id:%i', data.lineNo, data.entity_Id);
-  bucket.insert(id, validation.value, (error, result) => {
+  var id = util.format('exitsinc:dp:develop:import:line:%i:entity_id:%i', data.lineNo, data.entity_Id);
+  bucket.insert(data.id, data, (error, result) => {
     if (error) {
       response = {
         statusCode: 500,
@@ -105,7 +105,7 @@ module.exports.create = (event, context, callback) => {
       };
       return callback(null, response);
     }
-    data.ern = id;
+
     response = {
       statusCode: 201,
       body: JSON.stringify(data)
@@ -120,8 +120,7 @@ module.exports.retrieve = (event, context, callback) => {
   // change how the function waits to respond.
   context.callbackWaitsForEmptyEventLoop = false;
   var response = {};
-  // var statement = "SELECT META().id, `" + bucket._name + "`.* FROM `" + bucket._name + "` WHERE type = 'person'";
-  var statement = util.format("SELECT META().id, %s.* FROM %s", bucket._name, bucket._name);
+  var statement = util.format("SELECT META().id, %s.* FROM %s limit %i offset %i", bucket._name, bucket._name, event.queryStringParameters.limit, event.queryStringParameters.offset);
   var query = Couchbase.N1qlQuery.fromString(statement);
   bucket.query(query, (error, result) => {
     if (error) {
@@ -165,7 +164,7 @@ module.exports.update = (event, context, callback) => {
 
   // create a mutation builder based on the information found in the request.
   // that is, build the update around the keys provided to be modified
-  // in this case, read the id from the path parameters (uri/url)
+  // in this case, read the urn from the path parameters (uri/url)
   var builder = bucket.mutateIn(event.pathParameters.id);
   if (data.firstname) {
     builder.replace('firstname', data.firstname);
@@ -207,6 +206,7 @@ module.exports.delete = (event, context, callback) => {
   if (validation.error) {
     response = {
       statusCode: 500,
+      success: false,
       body: JSON.stringify(validation.error.details)
     };
     return callback(null, response);
@@ -217,6 +217,7 @@ module.exports.delete = (event, context, callback) => {
         statusCode: 500,
         body: JSON.stringify({
           code: error.code,
+          success: false,
           message: error.message
         })
       };
@@ -224,6 +225,8 @@ module.exports.delete = (event, context, callback) => {
     }
     response = {
       statusCode: 200,
+      success: true,
+      message: util.format('%s successfully removed.'),
       body: JSON.stringify(data)
     };
     callback(null, response);
