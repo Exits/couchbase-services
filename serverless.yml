@@ -36,3 +36,9 @@ functions:
       - http:
           path: delete
           method: delete
+  fulltextsandbox:
+    handler: handler.fulltextsandbox
+    events:
+      - http:
+          path: ftssandbox
+          method: get
