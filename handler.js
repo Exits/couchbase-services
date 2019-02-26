@@ -232,3 +232,36 @@ module.exports.delete = (event, context, callback) => {
     callback(null, response);
   });
 };
+
+module.exports.fulltextsandbox = (event, context, callback) => {
+  context.callbackWaitsForEmptyEventLoop = false;
+  var data = JSON.parse(event.body);
+  var response = {};
+
+
+  // Basic query structure; specify a type of query,
+  // then call this bucket.query business.
+
+  // So I guess we just try... 
+  var query = Couchbase.SearchQuery.new("entity_name_fulltext", SearchQuery.match("mohammed"));
+
+  bucket.query(query, (error, result) => {
+    if (error) {
+      response = {
+        statusCode: 500,
+        body: JSON.stringify({
+          code: error.code,
+          message: error.message
+        })
+      };
+      return callback(null, response);
+    }
+    response = {
+      statusCode: 200,
+      body: JSON.stringify(result)
+    };
+    callback(null, response);
+  });
+
+
+};
