@@ -94,7 +94,7 @@ module.exports.create = (event, context, callback) => {
     return callback(null, response);
   }
   var id = util.format('exitsinc:dp:develop:import:line:%i:entity_id:%i', data.lineNo, data.entity_Id);
-  bucket.insert(data.id, data, (error, result) => {
+  bucket.insert(id, data, (error, result) => {
     if (error) {
       response = {
         statusCode: 500,

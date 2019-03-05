@@ -3,7 +3,7 @@ service: gwiz-couchbase-service
 provider:
   name: aws  
   runtime: nodejs8.10
-  role: arn:aws:iam::248113531029:role/couchbase-service-dev-us-east-1-lambdaRole
+  role: arn:aws:iam::248113531029:role/lambda-s3-role
   vpc:
     securityGroupIds:
       - sg-05951416c94387778
