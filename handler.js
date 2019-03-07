@@ -266,30 +266,59 @@ module.exports.fulltextsandbox = (event, context, callback) => {
 };
 
 module.exports.dpnamesearch = (event, context, callback) => {
-  // use N1QL to query for all documents in Couchbase and return them.
 
-  // change how the function waits to respond.
   context.callbackWaitsForEmptyEventLoop = false;
   var response = {};
-  var statement = util.format("SELECT META().id, %s.* FROM %s limit %i offset %i", bucket._name, bucket._name, event.queryStringParameters.limit, event.queryStringParameters.offset);
-  var query = Couchbase.N1qlQuery.fromString(statement);
-  bucket.query(query, (error, result) => {
-    if (error) {
-      response = {
-        statusCode: 500,
-        body: JSON.stringify({
-          code: error.code,
-          message: error.message
-        })
-      };
-      return callback(null, response);
-    }
-    response = {
-      statusCode: 200,
-      body: JSON.stringify(result)
-    };
-    callback(null, response);
-  });
+
+  // This is a bit of a disaster right now, as it's
+  // vulnerable to SQL injection. Needs to be better-patterned.
+  // Also, the CONTAINS query is brutally slow. Might be able
+  // to save that with full-text search.
+
+// select entity_Id, name, country, start_Date, last_Update, denial_Code, denial_references from dp where name like '%MOHAMMED';
+  var queryRoot = ' entity_Id, name, country, start_Date, last_Update, denial_Code, denial_references from dp ';
+
+  var queries = [];
+  if (event.firstName || event.lastname) {
+    var fsafe = event.firstName.replace('\'', '\\\'');
+    var lsafe = event.lastName.replace('\'', '\\\'');
+    queries.push('select \'is_forward\', ' + queryRoot + 'where name = \'' + fsafe + ' ' + lsafe + '\'');
+    queries.push('select \'is_backward\', ' + queryRoot + 'where name = \'' + lsafe + ', ' + fsafe + '\'');
+    queries.push('select \'cont_forward\', ' + queryRoot + 'where name != \'' + fsafe + ' ' + lsafe + '\' and name like \'%' + fsafe + ' ' + lsafe + '%\'');
+    queries.push('select \'cont_backward\', ' + queryRoot + 'where name != \'' + lsafe + ', ' + fsafe + '\' and name like \'%' + lsafe + ', ' + fsafe + '%\'');
+  } else {
+    var nsafe = event.name.replace('\'', '\\\'');
+    queries.push(queryRoot + 'where name = \'' + nsafe + '\'');
+    queries.push(queryRoot + 'where name != \'' + nsafe + '\' and name like \'%' + nsafe + '%\'');
+  }
+
+  var resultSets = [];
+  for (var i = 0; i < queries.length; i++) {
+    var query = Couchbase.N1qlQuery.fromString(queries[i]);
+    bucket.query(query, (error, result) => {
+      if (error) {
+        if (!response.statusCode) {
+          response = {
+            statusCode: 500,
+            body: JSON.stringify({
+              code: error.code,
+              message: error.message
+            })   
+          };
+          return callback(null, response);
+        }
+      }
+      resultSets.push(result);
+      if (resultSets.length == queries.length) {
+        response = {
+          statusCode: 200,
+          body: JSON.stringify(resultSets);
+        };
+        callback(null, response);
+      }
+    });
+  }
+
 };
 
 module.exports.dpaddresssearch = (event, context, callback) => {

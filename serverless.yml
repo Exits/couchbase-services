@@ -47,10 +47,10 @@ functions:
     events:
       - http:
           path: dpnamesearch
-          method: get
+          method: post
   dpaddresssearch:
     handler: handler.dpaddresssearch
     events:
       - http:
           path: dpaddresssearch
-          method: get
+          method: post
