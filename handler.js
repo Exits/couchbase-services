@@ -263,5 +263,58 @@ module.exports.fulltextsandbox = (event, context, callback) => {
     callback(null, response);
   });
 
+};
 
+module.exports.dpnamesearch = (event, context, callback) => {
+  // use N1QL to query for all documents in Couchbase and return them.
+
+  // change how the function waits to respond.
+  context.callbackWaitsForEmptyEventLoop = false;
+  var response = {};
+  var statement = util.format("SELECT META().id, %s.* FROM %s limit %i offset %i", bucket._name, bucket._name, event.queryStringParameters.limit, event.queryStringParameters.offset);
+  var query = Couchbase.N1qlQuery.fromString(statement);
+  bucket.query(query, (error, result) => {
+    if (error) {
+      response = {
+        statusCode: 500,
+        body: JSON.stringify({
+          code: error.code,
+          message: error.message
+        })
+      };
+      return callback(null, response);
+    }
+    response = {
+      statusCode: 200,
+      body: JSON.stringify(result)
+    };
+    callback(null, response);
+  });
+};
+
+module.exports.dpaddresssearch = (event, context, callback) => {
+  // use N1QL to query for all documents in Couchbase and return them.
+
+  // change how the function waits to respond.
+  context.callbackWaitsForEmptyEventLoop = false;
+  var response = {};
+  var statement = util.format("SELECT META().id, %s.* FROM %s limit %i offset %i", bucket._name, bucket._name, event.queryStringParameters.limit, event.queryStringParameters.offset);
+  var query = Couchbase.N1qlQuery.fromString(statement);
+  bucket.query(query, (error, result) => {
+    if (error) {
+      response = {
+        statusCode: 500,
+        body: JSON.stringify({
+          code: error.code,
+          message: error.message
+        })
+      };
+      return callback(null, response);
+    }
+    response = {
+      statusCode: 200,
+      body: JSON.stringify(result)
+    };
+    callback(null, response);
+  });
 };

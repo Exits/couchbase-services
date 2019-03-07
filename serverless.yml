@@ -42,3 +42,15 @@ functions:
       - http:
           path: ftssandbox
           method: get
+  dpnamesearch:
+    handler: handler.dpnamesearch
+    events:
+      - http:
+          path: dpnamesearch
+          method: get
+  dpaddresssearch:
+    handler: handler.dpaddresssearch
+    events:
+      - http:
+          path: dpaddresssearch
+          method: get
