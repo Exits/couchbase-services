@@ -12,7 +12,10 @@
 const Couchbase = require('couchbase'),
   util = require('util'),
   UUID = require('uuid'),
-  Joi = require('joi');
+  Joi = require('joi'),
+  SearchQuery = Couchbase.SearchQuery,
+  SearchFacet = Couchbase.SearchFacet,
+  N1qlQuery = Couchbase.N1qlQuery;
 
 var cluster = new Couchbase.Cluster('couchbase://100.24.37.195');
 cluster.authenticate('the_gauth', '4y8xs#7Cnk');
@@ -243,7 +246,7 @@ module.exports.fulltextsandbox = (event, context, callback) => {
   // then call this bucket.query business.
 
   // So I guess we just try... 
-  var query = Couchbase.SearchQuery.new("entity_name_fulltext", SearchQuery.match("mohammed"));
+  var query = SearchQuery.new("entity_name_fulltext", SearchQuery.match("mohammed"));
 
   bucket.query(query, (error, result) => {
     if (error) {
@@ -278,46 +281,88 @@ module.exports.dpnamesearch = (event, context, callback) => {
 // select entity_Id, name, country, start_Date, last_Update, denial_Code, denial_references from dp where name like '%MOHAMMED';
   var queryRoot = ' entity_Id, name, country, start_Date, last_Update, denial_Code, denial_references from dp ';
 
-  var queries = [];
-  if (event.firstName || event.lastname) {
-    var fsafe = event.firstName.replace('\'', '\\\'');
-    var lsafe = event.lastName.replace('\'', '\\\'');
-    queries.push('select \'is_forward\', ' + queryRoot + 'where name = \'' + fsafe + ' ' + lsafe + '\'');
-    queries.push('select \'is_backward\', ' + queryRoot + 'where name = \'' + lsafe + ', ' + fsafe + '\'');
-    queries.push('select \'cont_forward\', ' + queryRoot + 'where name != \'' + fsafe + ' ' + lsafe + '\' and name like \'%' + fsafe + ' ' + lsafe + '%\'');
-    queries.push('select \'cont_backward\', ' + queryRoot + 'where name != \'' + lsafe + ', ' + fsafe + '\' and name like \'%' + lsafe + ', ' + fsafe + '%\'');
-  } else {
-    var nsafe = event.name.replace('\'', '\\\'');
-    queries.push(queryRoot + 'where name = \'' + nsafe + '\'');
-    queries.push(queryRoot + 'where name != \'' + nsafe + '\' and name like \'%' + nsafe + '%\'');
-  }
+  var data = JSON.parse(event.body);
 
-  var resultSets = [];
-  for (var i = 0; i < queries.length; i++) {
-    var query = Couchbase.N1qlQuery.fromString(queries[i]);
-    bucket.query(query, (error, result) => {
-      if (error) {
-        if (!response.statusCode) {
-          response = {
-            statusCode: 500,
-            body: JSON.stringify({
-              code: error.code,
-              message: error.message
-            })   
-          };
-          return callback(null, response);
-        }
+  var matchQueryHandler = function(error, result) {
+    if (error) {
+      if (!response.statusCode) {
+        response = {
+          statusCode: 500,
+          body: JSON.stringify({
+            code: error.code,
+            message: error.message
+          })   
+        };
+        return callback(null, response);
       }
+    } else {
       resultSets.push(result);
       if (resultSets.length == queries.length) {
         response = {
           statusCode: 200,
-          body: JSON.stringify(resultSets);
+          body: JSON.stringify(resultSets)
         };
         callback(null, response);
       }
-    });
+    }
+  };
+
+  var ftsQueryHandler = function(error, result) {
+    if (error) {
+      if (!response.statusCode) {
+        response = {
+          statusCode: 500,
+          body: JSON.stringify({
+            code: error.code,
+            message: error.message
+          })   
+        };
+        return callback(null, response);
+      }
+    } else {
+      var details = 'select \'contains\', ' + queryRoot + 'where META().id in [';
+      var idList = [];
+      result.forEach(function(item) { idList.push('\'' + item.id + '\'');});
+      details += idList.join(',') + ']';
+      var detailQuery = N1qlQuery.fromString(details);
+      bucket.query(detailQuery, matchQueryHandler);
+    }
+  };
+
+  var queries = [];
+  var resultSets = [];
+
+  if (data.firstName || data.lastName) {
+    var fsafe = data.firstName.replace('\'', '\\\'');
+    var lsafe = data.lastName.replace('\'', '\\\'');
+    var for_name = fsafe + ' ' + lsafe;
+    var rev_name = lsafe + ', ' + fsafe;
+
+    var isForwardQuery = N1qlQuery.fromString('select \'is\', ' + queryRoot + 'where name = \'' + for_name + '\'');
+    var isReverseQuery = N1qlQuery.fromString('select \'is\', ' + queryRoot + 'where name = \'' + rev_name + '\'');
+
+    var containsForwardQuery = SearchQuery.new('entity_name_fulltext', SearchQuery.match(for_name));
+    var containsReverseQuery = SearchQuery.new('entity_name_fulltext', SearchQuery.match(rev_name));
+
+    containsForwardQuery.fields("entity_Id", "name", "country", "start_Date", "last_Update", "denial_Code", "denial_references");
+    containsReverseQuery.fields("entity_Id", "name", "country", "start_Date", "last_Update", "denial_Code", "denial_references");
+
+    queries = [isForwardQuery, isReverseQuery, containsForwardQuery, containsReverseQuery];
+
+    bucket.query(isForwardQuery, matchQueryHandler);
+    bucket.query(isReverseQuery, matchQueryHandler);
+    bucket.query(containsForwardQuery, matchQueryHandler);
+    bucket.query(containsReverseQuery, matchQueryHandler);
+
+  } else {
+    var nsafe = data.name.replace('\'', '\\\'');
+
+    var isQuery = N1qlQuery.fromString('select \'is\', ' + queryRoot + 'where name = \'' + nsafe + '\'');
+    var containsQuery = SearchQuery.new('entity_name_fulltext', SearchQuery.match(nsafe));
+
+    queries = [isQuery, containsQuery];
   }
+
 
 };
 
