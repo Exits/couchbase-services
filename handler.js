@@ -15,7 +15,8 @@ const Couchbase = require('couchbase'),
   Joi = require('joi'),
   SearchQuery = Couchbase.SearchQuery,
   SearchFacet = Couchbase.SearchFacet,
-  N1qlQuery = Couchbase.N1qlQuery;
+  N1qlQuery = Couchbase.N1qlQuery,
+  MatchQuery = Couchbase.MatchQuery;
 
 var cluster = new Couchbase.Cluster('couchbase://100.24.37.195');
 cluster.authenticate('the_gauth', '4y8xs#7Cnk');
@@ -351,8 +352,8 @@ module.exports.dpnamesearch = (event, context, callback) => {
 
     bucket.query(isForwardQuery, matchQueryHandler);
     bucket.query(isReverseQuery, matchQueryHandler);
-    bucket.query(containsForwardQuery, matchQueryHandler);
-    bucket.query(containsReverseQuery, matchQueryHandler);
+    bucket.query(containsForwardQuery, ftsQueryHandler);
+    bucket.query(containsReverseQuery, ftsQueryHandler);
 
   } else {
     var nsafe = data.name.replace('\'', '\\\'');
