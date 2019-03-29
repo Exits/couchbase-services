@@ -1,14 +1,5 @@
 'use strict';
 
-/*
- * replace farts with standard function syntax
- * optimize const and vars to one each
- * reduce module.exports to return a an object containing references to each function
- * reformat the dynamic strings using node util.format function
- * build a standard response function
- * build a validation service
- */
-
 const Couchbase = require('couchbase'),
   util = require('util'),
   UUID = require('uuid'),
@@ -189,7 +180,7 @@ module.exports.update = (event, context, callback) => {
     }
     response = {
       statusCode: 200,
-      body: JSON.stringify(data)
+      body: JSON.stringify(result)
     };
     callback(null, response);
   });
@@ -231,7 +222,7 @@ module.exports.delete = (event, context, callback) => {
       statusCode: 200,
       success: true,
       message: util.format('%s successfully removed.'),
-      body: JSON.stringify(data)
+      body: JSON.stringify(result)
     };
     callback(null, response);
   });
