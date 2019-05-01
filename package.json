@@ -4,8 +4,11 @@
   "description": "",
   "main": "handler.js",
   "dependencies": {
-    "couchbase": "git+https://github.com/couchbase/couchnode.git#v2.6.2",
-    "joi": "^14.3.1",
+    "@hapi/joi": "^15.0.1",
+    "bluebird": "^3.5.4",
+    "couchbase": "git+https://github.com/couchbase/couchnode.git#v2.6.3",
+    "lodash": "^4.17.11",
+    "moment": "^2.24.0",
     "uuid": "^3.3.2"
   },
   "devDependencies": {

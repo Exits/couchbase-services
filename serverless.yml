@@ -1,9 +1,14 @@
-service: gwiz-couchbase-service
+service: 
+    name: couchbase-api
 
 provider:
   name: aws  
   runtime: nodejs8.10
   role: arn:aws:iam::248113531029:role/lambda-s3-role
+  stage: ${opt:stage, 'test'} # Set the default stage used. Default is dev
+  region: ${opt:region, 'us-east-1'} # Overwrite the default region used. Default is us-east-1
+  stackName: couchbase-api # Use a custom name for the CloudFormation stack
+  apiName: Couchbase Management API # Use a custom name for the API Gateway API                
       
 functions:
   create:
@@ -24,27 +29,13 @@ functions:
       - http:
           path: update/{id}
           method: put
+          request:
+            parameters:
+              paths:
+                id: true
   delete:
     handler: handler.delete
     events:
       - http:
           path: delete
           method: delete
-  fulltextsandbox:
-    handler: handler.fulltextsandbox
-    events:
-      - http:
-          path: ftssandbox
-          method: get
-  dpnamesearch:
-    handler: handler.dpnamesearch
-    events:
-      - http:
-          path: dpnamesearch
-          method: post
-  dpaddresssearch:
-    handler: handler.dpaddresssearch
-    events:
-      - http:
-          path: dpaddresssearch
-          method: post
